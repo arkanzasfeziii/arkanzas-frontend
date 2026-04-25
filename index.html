@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arkanzasfeziii - The Ultimate Test</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --neon-green: #0ff;
+            --neon-pink: #f0f;
+            --bg-color: #050505;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background-image: radial-gradient(circle at center, #111 0%, #000 100%);
+        }
+
+        /* Glitch Effect for Header */
+        .glitch-wrapper {
+            font-size: 4rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            position: relative;
+            text-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green);
+            margin-bottom: 50px;
+            letter-spacing: 5px;
+        }
+
+        .glitch-wrapper::before, .glitch-wrapper::after {
+            content: "arkanzasfeziii";
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0.8;
+        }
+
+        .glitch-wrapper::before {
+            color: var(--neon-pink);
+            z-index: -1;
+            animation: glitch-anim 2s infinite linear alternate-reverse;
+        }
+
+        .glitch-wrapper::after {
+            color: #0ff;
+            z-index: -2;
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, -1px); }
+        }
+
+        .game-container {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid var(--neon-green);
+            padding: 40px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.1);
+            text-align: center;
+            width: 600px;
+            max-width: 90%;
+        }
+
+        #level-display {
+            font-size: 1.2rem;
+            color: var(--neon-pink);
+            margin-bottom: 20px;
+        }
+
+        #equation-display {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            min-height: 40px;
+        }
+
+        input[type="text"] {
+            background: transparent;
+            border: 2px solid var(--neon-green);
+            color: var(--neon-green);
+            font-size: 1.5rem;
+            padding: 10px;
+            width: 80%;
+            text-align: center;
+            font-family: inherit;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .timer-bar-container {
+            width: 100%;
+            height: 10px;
+            background: #222;
+            margin-top: 30px;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+
+        #timer-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--neon-green);
+            transition: width 0.1s linear, background 0.3s;
+        }
+
+        .sanskrit-win {
+            font-size: 3rem;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; text-shadow: 0 0 40px #ffd700; }
+            100% { opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glitch-wrapper">arkanzasfeziii</div>
+
+    <div class="game-container" id="game-box">
+        <div id="level-display">SYSTEM_LEVEL: [ 01 / 20 ]</div>
+        <div id="equation-display">INITIALIZING...</div>
+        <input type="text" id="answer-input" placeholder="ENTER SOLUTION" autocomplete="off" autofocus>
+        
+        <div class="timer-bar-container">
+            <div id="timer-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api/puzzle";
+        let currentLevel = 1;
+        let expectedAnswer = "";
+        let timerInterval;
+        let timeLeft;
+        let totalTime;
+
+        const levelDisplay = document.getElementById('level-display');
+        const equationDisplay = document.getElementById('equation-display');
+        const answerInput = document.getElementById('answer-input');
+        const timerBar = document.getElementById('timer-bar');
+        const gameBox = document.getElementById('game-box');
+
+        async function fetchPuzzle(level) {
+            try {
+                const response = await fetch(`${API_URL}?level=${level}`);
+                const data = await response.json();
+
+                if (data.status === "win") {
+                    triggerWinState(data.message);
+                    return;
+                }
+
+                currentLevel = data.level;
+                expectedAnswer = data.answer;
+                totalTime = data.time_limit;
+                timeLeft = totalTime;
+
+                levelDisplay.innerText = `SYSTEM_LEVEL: [ ${String(currentLevel).padStart(2, '0')} / 20 ]`;
+                equationDisplay.innerText = data.equation;
+                answerInput.value = "";
+                answerInput.focus();
+
+                startTimer();
+            } catch (error) {
+                equationDisplay.innerText = "CONNECTION_FAILED. RETRYING...";
+                setTimeout(() => fetchPuzzle(level), 2000);
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerBar.style.width = "100%";
+            timerBar.style.background = "var(--neon-green)";
+
+            timerInterval = setInterval(() => {
+                timeLeft -= 50; // Update every 50ms for smooth bar
+                const percentage = (timeLeft / totalTime) * 100;
+                timerBar.style.width = `${percentage}%`;
+
+                if (percentage < 30) {
+                    timerBar.style.background = "red";
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleFailure("TIME_OUT");
+                }
+            }, 50);
+        }
+
+        function handleFailure(reason) {
+            clearInterval(timerInterval);
+            document.body.style.background = "red";
+            equationDisplay.innerText = `[ FATAL_ERROR: ${reason} ]`;
+            
+            setTimeout(() => {
+                document.body.style.background = "var(--bg-color)";
+                currentLevel = 1; // The cruel reset
+                fetchPuzzle(currentLevel);
+            }, 1000);
+        }
+
+        function triggerWinState(message) {
+            clearInterval(timerInterval);
+            gameBox.innerHTML = `<div class="sanskrit-win">${message}</div>`;
+        }
+
+        answerInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const userAnswer = answerInput.value.trim();
+                if (userAnswer === expectedAnswer) {
+                    clearInterval(timerInterval);
+                    currentLevel++;
+                    fetchPuzzle(currentLevel);
+                } else {
+                    handleFailure("INCORRECT_VALUE");
+                }
+            }
+        });
+
+        // Start the game
+        window.onload = () => fetchPuzzle(currentLevel);
+
+    </script>
+</body>
+</html>
